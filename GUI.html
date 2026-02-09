@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Air University Navigator</title>
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --secondary: #3b82f6;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 1000px; /* Increased slightly to accommodate map */
+            width: 100%;
+            display: grid;
+            gap: 20px;
+        }
+
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 { margin: 0; font-size: 1.5rem; }
+        p.subtitle { margin: 5px 0 0; opacity: 0.8; font-size: 0.9rem; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+        }
+
+        .card h2 { margin-top: 0; font-size: 1.1rem; color: var(--primary); border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 15px; }
+
+        label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 5px; }
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 1rem;
+            background-color: #f8fafc;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--secondary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: var(--primary); }
+
+        .result-stats {
+            background-color: #ecfdf5;
+            color: #065f46;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #a7f3d0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .step-list {
+            position: relative;
+            padding-left: 20px;
+        }
+        
+        .step-line {
+            position: absolute;
+            left: 21px;
+            top: 10px;
+            bottom: 30px;
+            width: 2px;
+            background-color: #e2e8f0;
+            z-index: 1;
+        }
+
+        .step {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .step-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #e0f2fe;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            border: 3px solid white;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            font-size: 0.8rem;
+        }
+
+        .step-content h3 { margin: 0; font-size: 1rem; }
+        .step-content p { margin: 5px 0 0; color: #64748b; font-size: 0.85rem; }
+
+        .is-path .step-icon { background-color: #f1f5f9; color: #94a3b8; }
+        .is-path h3 { color: #64748b; font-weight: normal; }
+        
+        ul.history-list { list-style: none; padding: 0; margin: 0; }
+        ul.history-list li {
+            padding: 10px;
+            border-left: 3px solid var(--secondary);
+            background: #f8fafc;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+        .hist-meta { display: flex; justify-content: space-between; font-size: 0.75rem; color: #64748b; margin-top: 2px; }
+
+        .hidden { display: none; }
+        .empty-state { text-align: center; color: #94a3b8; padding: 40px 0; }
+        
+        /* Map Styles */
+        .map-container {
+            width: 100%;
+            overflow: hidden;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .map-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Air University Navigator</h1>
+        <p class="subtitle">Campus Routing System </p>
+    </header>
+
+    <div class="grid">
+        <div class="left-col" style="display: flex; flex-direction: column; gap: 20px;">
+            <div class="card">
+                <h2>Select Route</h2>
+                <label for="startNode">Start Location</label>
+                <select id="startNode"></select>
+
+                <div style="text-align: center; margin-bottom: 10px; color: #94a3b8;">&darr;</div>
+
+                <label for="endNode">Destination</label>
+                <select id="endNode"></select>
+
+                <button onclick="calculateRoute()">Find Shortest Path</button>
+            </div>
+
+            <div class="card">
+                <h2>Recent History</h2>
+                <ul id="historyList" class="history-list">
+                    <li style="border:none; background:none; padding:0; color:#94a3b8; font-style:italic;">No recent searches.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="right-col" style="display: flex; flex-direction: column; gap: 20px;">
+            
+            <div class="card">
+                <h2>Campus Map Reference</h2>
+                <div class="map-container">
+                    <img src="image_fede74.png" alt="Air University Map Structure">
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Route Details</h2>
+                <div id="emptyState" class="empty-state">
+                    <p>Select locations and click "Find Shortest Path"</p>
+                </div>
+
+                <div id="resultContainer" class="hidden">
+                    <div class="result-stats">
+                        <strong>Total Distance</strong>
+                        <span id="totalDistDisplay" style="font-size: 1.2rem; font-weight: bold;">0m</span>
+                    </div>
+                    
+                    <div class="step-list">
+                        <div class="step-line"></div>
+                        <div id="stepsOutput"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * GRAPH DATA - MATCHING C++ SOURCE EXACTLY
+ */
+const INF = Number.MAX_SAFE_INTEGER;
+
+// 1. Single Node Names
+const locationNames = {
+  1: "Main Gate",
+  41: "LTC & Library",
+  49: "Admin Block (Front)",
+  20: "Sports Complex",
+  43: "FMC (Medical)",
+  44: "NCSA",
+  45: "B-Block",
+  46: "A-Block",
+  47: "C-Block (Front)",
+  50: "Admin Block (Back)",
+  71: "AU Deli",
+  73: "CAFE",
+  74: "Sports Complex (Side)",
+  76: "Masjid",
+  77: "FMC Parking",
+  75: "C-Block Parking",
+  48: "C-Block (Back)",
+  
+  42: "IAA East Entrance",
+  72: "AU Arena (IAA West)",
+
+  // NCSA Internal Rooms
+  101: "NCSA-CR-01",
+  102: "NCSA-CR-02",
+  103: "NCSA-CR-03",
+  104: "NCSA-CR-04",
+  105: "MAM Memona Office",
+  106: "NCSA Lab 1",
+  107: "NCSA Lab 2",
+  108: "HOD Office"
+};
+
+// 2. Edges (Connections) [u, v, weight]
+const edges = [
+  // MAIN GATE
+  [1, 2, 20], [1, 6, 70], [1, 41, 30],
+  [2, 3, 20], [3, 4, 60],
+  [4, 5, 20], [4, 71, 40],
+  [5, 77, 60], [77, 43, 60],
+  [71, 41, 40], [71, 13, 30],
+  [13, 77, 20], [13, 14, 60], [14, 43, 20],
+  [43, 15, 20], [15, 44, 20], [44, 16, 25],
+  [6, 7, 10], [6, 8, 40], [6, 42, 40],
+  [42, 13, 60],
+  [8, 72, 40], [8, 9, 10], [9, 10, 30],
+  [10, 17, 60], [10, 11, 30],
+  [11, 12, 40], [11, 19, 40],
+  [19, 18, 20], [19, 50, 15],
+  [72, 14, 40], [72, 24, 5],
+  [24, 73, 5], [24, 17, 25],
+  [17, 18, 30], [17, 44, 60],
+  [18, 49, 15], [18, 16, 50],
+  [16, 45, 15],
+  [49, 45, 40], [49, 50, 20], [49, 21, 15],
+  [45, 46, 15],
+  [46, 21, 40], [46, 22, 10],
+  [50, 20, 15],
+  [20, 74, 30], [20, 21, 20],
+  [74, 12, 10],
+  [12, 75, 90],
+  [75, 48, 20],
+  [21, 47, 55], [47, 76, 50],
+  [22, 76, 55],
+  // NCSA Internal Rooms
+  [44, 101, 30], [44, 102, 30], [44, 103, 50],
+  [44, 104, 60], [44, 105, 30], [44, 106, 20],
+  [44, 107, 55], [44, 108, 20]
+];
+
+// 3. Multi-Entry Departments
+const multiEntryDepts = {
+  33: { name: "IAA (Institute of Avionics)", entrances: [42, 72], internalDist: 30 },
+  99: { name: "Admin Block (Main)", entrances: [49, 50], internalDist: 25 },
+  88: { name: "C-Block", entrances: [47, 48], internalDist: 25 }
+};
+
+// --- ALGORITHM LOGIC ---
+
+class CampusGraph {
+  constructor() {
+    this.adj = new Map();
+    // Build Graph from Edges
+    edges.forEach(([u, v, w]) => this.addEdge(u, v, w));
+    
+    // Add virtual edges for Multi-Entry Depts
+    Object.keys(multiEntryDepts).forEach(masterId => {
+      const id = parseInt(masterId);
+      const { entrances, internalDist } = multiEntryDepts[id];
+      entrances.forEach(ent => {
+        this.addEdge(id, ent, internalDist); 
+      });
+    });
+  }
+
+  addEdge(u, v, w) {
+    if (!this.adj.has(u)) this.adj.set(u, []);
+    if (!this.adj.has(v)) this.adj.set(v, []);
+    this.adj.get(u).push({ node: v, weight: w });
+    this.adj.get(v).push({ node: u, weight: w });
+  }
+
+  getLocationName(id) {
+    if (locationNames[id]) return locationNames[id];
+    if (multiEntryDepts[id]) return multiEntryDepts[id].name;
+    return "Path/Turn";
+  }
+
+  findRoute(start, end) {
+    const dist = new Map();
+    const parent = new Map();
+    const pq = []; 
+
+    for (const node of this.adj.keys()) {
+      dist.set(node, INF);
+    }
+    dist.set(start, 0);
+    pq.push({ node: start, dist: 0 });
+
+    while (pq.length > 0) {
+      pq.sort((a, b) => a.dist - b.dist);
+      const { node: u, dist: currentDist } = pq.shift();
+
+      if (currentDist > dist.get(u)) continue;
+      if (u === end) break;
+
+      const neighbors = this.adj.get(u) || [];
+      for (const { node: v, weight } of neighbors) {
+        if (dist.get(u) + weight < dist.get(v)) {
+          dist.set(v, dist.get(u) + weight);
+          parent.set(v, u);
+          pq.push({ node: v, dist: dist.get(v) });
+        }
+      }
+    }
+
+    if (dist.get(end) === INF) return null;
+
+    // Path Reconstruction
+    const path = [];
+    let curr = end;
+    while (curr !== undefined) {
+      path.push(curr);
+      curr = parent.get(curr);
+    }
+    path.reverse();
+
+    // Formatting Steps
+    const steps = [];
+    for (let i = 0; i < path.length; i++) {
+      const u = path[i];
+      const name = this.getLocationName(u);
+      let d = 0;
+      
+      if (i < path.length - 1) {
+        const v = path[i+1];
+        const neighbors = this.adj.get(u);
+        const edge = neighbors.find(n => n.node === v);
+        if (edge) d = edge.weight;
+      }
+      
+      // Hide internal hops for Master Nodes
+      const isMultiEntryDest = multiEntryDepts[path[path.length-1]];
+      
+      if (i === path.length - 2 && isMultiEntryDest) {
+         steps.push({ id: u, name: `Arrived at ${this.getLocationName(path[i+1])} Entrance`, dist: 0, isEnd: true });
+         continue;
+      }
+      
+      if (i === path.length - 1 && isMultiEntryDest) continue;
+
+      steps.push({ id: u, name, dist: d, isEnd: (i === path.length - 1) });
+    }
+    
+    return { totalDist: dist.get(end), steps };
+  }
+}
+
+// --- UI CONTROLLER ---
+const graph = new CampusGraph();
+const historyData = [];
+
+window.onload = function() {
+    const startSelect = document.getElementById('startNode');
+    const endSelect = document.getElementById('endNode');
+    
+    // 1. Identify which nodes should be HIDDEN from menu (because they are sub-entrances)
+    const hiddenIDs = new Set();
+    Object.values(multiEntryDepts).forEach(dept => {
+        dept.entrances.forEach(id => hiddenIDs.add(id.toString()));
+    });
+
+    // 2. Build the display list
+    // - Include Location Names (Filtering out hidden ones)
+    // - Include Master Nodes (multiEntryDepts)
+    const allLocs = [];
+
+    // Add Standard Locations (excluding sub-entrances)
+    Object.entries(locationNames).forEach(([id, name]) => {
+        if (!hiddenIDs.has(id)) {
+            allLocs.push({ id, name });
+        }
+    });
+
+    // Add Master Nodes
+    Object.entries(multiEntryDepts).forEach(([id, data]) => {
+        allLocs.push({ id, name: data.name });
+    });
+
+    // Sort Alphabetically
+    allLocs.sort((a, b) => a.name.localeCompare(b.name));
+
+    // Populate Dropdowns
+    allLocs.forEach(loc => {
+        const opt = document.createElement('option');
+        opt.value = loc.id;
+        opt.text = `[${loc.id}] ${loc.name}`;
+        startSelect.add(opt.cloneNode(true));
+        endSelect.add(opt);
+    });
+
+    startSelect.value = "1";
+    endSelect.value = "99";
+};
+
+function calculateRoute() {
+    const s = parseInt(document.getElementById('startNode').value);
+    const e = parseInt(document.getElementById('endNode').value);
+    
+    const route = graph.findRoute(s, e);
+    
+    const resultContainer = document.getElementById('resultContainer');
+    const emptyState = document.getElementById('emptyState');
+    const stepsOutput = document.getElementById('stepsOutput');
+    const totalDistDisplay = document.getElementById('totalDistDisplay');
+
+    if (!route) {
+        alert("No route found between these locations!");
+        return;
+    }
+
+    emptyState.classList.add('hidden');
+    resultContainer.classList.remove('hidden');
+    
+    totalDistDisplay.innerText = route.totalDist + " meters";
+    
+    stepsOutput.innerHTML = '';
+    route.steps.forEach((step) => {
+        const isPath = step.name.includes("Path");
+        const div = document.createElement('div');
+        div.className = `step ${isPath ? 'is-path' : ''}`;
+        
+        div.innerHTML = `
+            <div class="step-icon">${step.id}</div>
+            <div class="step-content">
+                <h3>${step.name}</h3>
+                ${!step.isEnd ? `<p>&darr; Walk ${step.dist} meters</p>` : ''}
+            </div>
+        `;
+        stepsOutput.appendChild(div);
+    });
+
+    addToHistory(s, e, route.totalDist);
+}
+
+function addToHistory(s, e, dist) {
+    const startName = graph.getLocationName(s);
+    const endName = graph.getLocationName(e);
+    
+    const item = { from: startName, to: endName, dist: dist };
+    historyData.unshift(item); 
+    if(historyData.length > 5) historyData.pop();
+
+    const list = document.getElementById('historyList');
+    list.innerHTML = '';
+    
+    historyData.forEach(h => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <strong>${h.to}</strong>
+            <div class="hist-meta">
+                <span>From: ${h.from}</span>
+                <span>${h.dist}m</span>
+            </div>
+        `;
+        list.appendChild(li);
+    });
+}
+</script>
+
+</body>
+</html>
